@@ -1,0 +1,26 @@
+= hacking_newdelhi
+
+An update of the demo app from Greach 2015 ("`hacking_madrid`") which was an update of the demo app from GGX 2011 ("`hacking_london`"). Updated to Grails 3 and spring-security-core 3.0.3
+
+Adds an "`organization`" drop-down to the login page in addition to username and password, and a customized `Authentication` class, servlet filter, and `AuthenticationProvider`.
+
+Items of note:
+
+* `grails-app/views/login/auth.gsp` is the same as `auth.gsp` from the core plugin, with the addition of a `<g:select>` to select the user's Organization during login
+* `hacking.extralogin.OrganizationAuthentication` extends `UsernamePasswordAuthenticationToken` to add a `String organizationName` property
+* `hacking.extralogin.ui.OrganizationFilter` extends the core plugin's `GrailsUsernamePasswordAuthenticationFilter` and is registered as the `authenticationProcessingFilter` bean to process form logins; it creates `OrganizationAuthentication` instances from POST parameters for authentication
+* `hacking.extralogin.auth.OrganizationAuthenticationProvider` uses the data in `OrganizationAuthentication` to authenticate
+** It's based on `DaoAuthenticationProvider` but directly accesses the database using GORM instead of delegating to a `UserDetailsService`
+* two new domain classes, `Organization` and `OrgUser` are used to persist the user/organization relationship
+** OrgUser is the many-to-many join class which uses two 1-to-many relationships instead of the traditional GORM `static hasMany` mapped collections
+* BootStrap.groovy creates test data:
+** two `Organization` instances, "`Org1`" and "`Org2`"
+** a user with `ROLE_ADMIN` ("`admin`"/"`password`") in "`Org1`"
+** a user with `ROLE_USER` ("`user`"/"`password`") in "`Org2`"
+** a user with `ROLE_USER` and `enabled` set to false ("`disabled`"/"`password`") in "`Org1`"
+* rather than copying and pasting the entire bean definitions into `resources.groovy` to override the bean class for the `authenticationProcessingFilter` and `daoAuthenticationProvider` beans, `hacking.HackingBeanFactoryPostProcessor` is registered in `resources.groovy` and updates the bean class in the bean definition. This approach retains all of the dependency injections and configuration updates and helps prevent the app from breaking if updated to a newer version of the plugin that has different dependencies and/or config options for the beans
+* `NoStackBadCredentialsException` is thrown as needed instead of `BadCredentialsException`; it's similar to the core plugin's `NoStackUsernameNotFoundException` which avoids filling in the stack trace to reduce creation cost
+* `secured.SecureController` has two annotated actions; `/secure` requires `ROLE_USER` (or `ROLE_ADMIN` since hierarchical roles are configured) and `/secure/admin` requires `ROLE_ADMIN`
+* debug/trace logging for the plugin and Spring Security is configured but commented out in `logback.groovy`
+* as in all of the demo apps, `main.gsp` was renamed to `application.gsp` since that's the default name if none is specified, and the `<meta>` tag specifying the layout was removed from the GSPs
+** note that this requires configuring the `grails.plugin.springsecurity.gsp.layoutAuth` and `grails.plugin.springsecurity.gsp.layoutDenied` properties in `application.groovy`

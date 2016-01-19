@@ -1,0 +1,10 @@
+*.iml
+*.ipr
+*.iws
+*.log
+.asscache
+.DS_Store
+.gradle
+.idea
+.~*
+build

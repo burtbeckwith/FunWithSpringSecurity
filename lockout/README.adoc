@@ -1,0 +1,14 @@
+= lockout
+
+A sample application showing how to use events to lock a user account after a fixed number of failed login attempts
+
+Items of note:
+
+* `lockout.FailureEventListener` is registered to listen for `AuthenticationFailureBadCredentialsEvent`
+* `lockout.SuccessEventListener` is registered to listen for `AuthenticationSuccessEvent`
+* the User domain class has `int badCredentialsCount` to track failed logins
+* `UserService` increments badCredentialsCount for failures and resets to 0 on success
+* `secured.SecureController` has two annotated actions; `/secure` requires `ROLE_USER` (or `ROLE_ADMIN` since hierarchical roles are configured) and `/secure/admin` requires `ROLE_ADMIN`
+* debug/trace logging for the plugin and Spring Security is configured but commented out in `logback.groovy`
+* as in all of the demo apps, `main.gsp` was renamed to `application.gsp` since that's the default name if none is specified, and the `<meta>` tag specifying the layout was removed from the GSPs
+** note that this requires configuring the `grails.plugin.springsecurity.gsp.layoutAuth` and `grails.plugin.springsecurity.gsp.layoutDenied` properties in `application.groovy`

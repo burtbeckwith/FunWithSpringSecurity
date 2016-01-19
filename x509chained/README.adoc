@@ -1,0 +1,26 @@
+= x509chained
+
+A sample application showing how to use X.509 browser certificates and a second authentication provider to authenticate.
+
+Note that this has been only lightly tested and should be used with caution. I have no idea if there are gaps in the implementation. Test anything based on this approach and/or code extensively before using in a real application. If you find problems with the approach or code let me know so I can update the code.
+
+Items of note:
+
+* X.509 is enabled by adding `useX509 = true` in `application.groovy`
+* two users ("`dianne`" and "`scott`") are created in <code>BootStrap.groovy</code>, both with password "`password`" since the password is needed for the second form-auth phase
+* add the `dianne.p12` and/or `scott.p12` certificate to your browser to authenticate as that person
+* you must use SSL with X.509 authentication; I tested by building a WAR file and deploying it to Tomcat 8, and configuring `run-app` similarly is left as an exercise for the reader
+** To test, run `grails war` and copy build/libs/x509chained-0.1.war to the Tomcat webapps folder, renaming the war to ROOT.war so it uses the default context
+** be sure to access the application with SSL URLs, e.g. https://localhost:8443/secure/index
+* configure `server.jks` as the keystore and truststore; `server.xml` is an example Tomcat 8 config file that does this, expecting that `server.jks` is in the `conf` directory
+* `x509chained.LoginController` extends the plugin's `LoginController` to not redirect to `successHandler.defaultTargetUrl` if authenticated. This is needed because the chained authentication happens in two requests with a redirect. If the first phase (X.509) succeeds, there will be an active authentication, but it's incomplete and cannot be used yet. Filter chain processing must be allowed to happen to allow the second authentication phase to run.
+* `x509chained.ChainedX509AuthenticationFilter` extends the standard `X509AuthenticationFilter` to replace the `Authentication` in `successfulAuthentication` with one with all of the real roles replaced with `ROLE_CHAINED_X509` as a marker to indicate that the first authentication phase succeeded. The second authentication phase will create a standard `Authentication` with the real roles.
+* `x509chained.ChainedAuthenticationProcessingFilter` extends the plugin's form authentication filter (`GrailsUsernamePasswordAuthenticationFilter`). It detects that the X.509 phase has occurred and redirects to the login page, replacing the credentials (since they're unused by X.509) with a marker string so downstream processing is aware of the current state in the workflow.
+* `secured.SecureController` has two annotated actions; `/secure` requires `ROLE_USER` (or `ROLE_ADMIN` since hierarchical roles are configured) and `/secure/admin` requires `ROLE_ADMIN`
+* debug/trace logging for the plugin and Spring Security is configured but commented out in `logback.groovy`
+* the application is intentionally stripped-down:
+** there are no static resources
+** the GSPs are very minimal
+** all unused attributes were removed from the `grails.plugin.springsecurity` block in `application.groovy`
+* as in all of the demo apps, `main.gsp` was renamed to `application.gsp` since that's the default name if none is specified, and the `<meta>` tag specifying the layout was removed from the GSPs
+** note that this requires configuring the `grails.plugin.springsecurity.gsp.layoutAuth` and `grails.plugin.springsecurity.gsp.layoutDenied` properties in `application.groovy`
